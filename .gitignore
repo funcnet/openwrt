@@ -11,7 +11,7 @@
 /staging_dir
 /tmp
 /logs
-/feeds
+# /feeds
 /feeds.conf
 /files
 /target/linux/feeds
@@ -35,3 +35,10 @@ git-src
 .cproject
 .ccache
 .vscode*
+
+# added by ffu
+*.txt
+/feeds/luci.tmp
+/feeds/packages.tmp
+/feeds/routing.tmp
+/feeds/telephony.tmp
