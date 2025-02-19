@@ -105,54 +105,62 @@ sub tool_present {
 }
 
 sub select_tool {
-	$custom_tool =~ tr/"//d;
-	if ($custom_tool) {
-		return $custom_tool;
-	}
+	# $custom_tool =~ tr/"//d;
+	# if ($custom_tool) {
+	# 	return $custom_tool;
+	# }
 
-	# Try to use curl if available
-	if (tool_present("curl", "curl")) {
-		return "curl";
-	}
+	# # Try to use curl if available
+	# if (tool_present("curl", "curl")) {
+	# 	return "curl";
+	# }
 
 	# No tool found, fallback to wget
 	return "wget";
 }
 
 sub download_cmd {
-	my $url = shift;
-	my $filename = shift;
+    my $url = shift;
+    my $filename = shift;
+    
+    my @cmd;
+    
+    if ($download_tool eq "curl") {
+        @cmd = (qw(curl -f --connect-timeout 20 --retry 5 --location),
+            $check_certificate ? () : '--insecure',
+            shellwords($ENV{CURL_OPTIONS} || ''),
+            $url);
+    } elsif ($download_tool eq "wget") {
+        @cmd = (qw(wget --tries=5 --timeout=20 --output-document=-),
+            $check_certificate ? () : '--no-check-certificate',
+            shellwords($ENV{WGET_OPTIONS} || ''),
+            $url);
+    } elsif ($download_tool eq "aria2c") {
+        my $additional_mirrors = join(" ", map "$_/$filename", @_);
+        my @chArray = ('a'..'z', 'A'..'Z', 0..9);
+        my $rfn = join '', "${filename}_", map{ $chArray[int rand @chArray] } 0..9;
 
-	if ($download_tool eq "curl") {
-		return (qw(curl -f --connect-timeout 20 --retry 5 --location),
-			$check_certificate ? () : '--insecure',
-			shellwords($ENV{CURL_OPTIONS} || ''),
-			$url);
-	} elsif ($download_tool eq "wget") {
-		return (qw(wget --tries=5 --timeout=20 --output-document=-),
-			$check_certificate ? () : '--no-check-certificate',
-			shellwords($ENV{WGET_OPTIONS} || ''),
-			$url);
-	} elsif ($download_tool eq "aria2c") {
-		my $additional_mirrors = join(" ", map "$_/$filename", @_);
-		my @chArray = ('a'..'z', 'A'..'Z', 0..9);
-		my $rfn = join '', "${filename}_", map{ $chArray[int rand @chArray] } 0..9;
-
-		@mirrors=();
-
-		return join(" ", "[ -d $ENV{'TMPDIR'}/aria2c ] || mkdir $ENV{'TMPDIR'}/aria2c;",
-			"touch $ENV{'TMPDIR'}/aria2c/${rfn}_spp;",
-			qw(aria2c --stderr -c -x2 -s10 -j10 -k1M), $url, $additional_mirrors,
-			$check_certificate ? () : '--check-certificate=false',
-			"--server-stat-of=$ENV{'TMPDIR'}/aria2c/${rfn}_spp",
-			"--server-stat-if=$ENV{'TMPDIR'}/aria2c/${rfn}_spp",
-			"--daemon=false --no-conf", shellwords($ENV{ARIA2C_OPTIONS} || ''),
-			"-d $ENV{'TMPDIR'}/aria2c -o $rfn;",
-			"cat $ENV{'TMPDIR'}/aria2c/$rfn;",
-			"rm $ENV{'TMPDIR'}/aria2c/$rfn $ENV{'TMPDIR'}/aria2c/${rfn}_spp");
-	} else {
-		return join(" ", $download_tool, $url);
-	}
+        @mirrors=();
+        
+        my $cmd_str = join(" ", "[ -d $ENV{'TMPDIR'}/aria2c ] || mkdir $ENV{'TMPDIR'}/aria2c;",
+            "touch $ENV{'TMPDIR'}/aria2c/${rfn}_spp;",
+            qw(aria2c --stderr -c -x2 -s10 -j10 -k1M), $url, $additional_mirrors,
+            $check_certificate ? () : '--check-certificate=false',
+            "--server-stat-of=$ENV{'TMPDIR'}/aria2c/${rfn}_spp",
+            "--server-stat-if=$ENV{'TMPDIR'}/aria2c/${rfn}_spp",
+            "--daemon=false --no-conf", shellwords($ENV{ARIA2C_OPTIONS} || ''),
+            "-d $ENV{'TMPDIR'}/aria2c -o $rfn;",
+            "cat $ENV{'TMPDIR'}/aria2c/$rfn;",
+            "rm $ENV{'TMPDIR'}/aria2c/$rfn $ENV{'TMPDIR'}/aria2c/${rfn}_spp");
+            
+        print("Download command: $cmd_str\n");
+        return $cmd_str;
+    } else {
+        @cmd = ($download_tool, $url);
+    }
+    
+    print("Download command: " . join(" ", @cmd) . "\n");
+    return @cmd;
 }
 
 my $hash_cmd = hash_cmd();
