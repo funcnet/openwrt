@@ -264,7 +264,7 @@ ifeq ($(DUMP),1)
   endif
   ifeq ($(ARCH),aarch64)
     CPU_TYPE ?= generic
-    CPU_CFLAGS_generic = -mcpu=generic
+    # CPU_CFLAGS_generic = -mcpu=generic
     CPU_CFLAGS_cortex-a53 = -mcpu=cortex-a53
   endif
   ifeq ($(ARCH),arc)
